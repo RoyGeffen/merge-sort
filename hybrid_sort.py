@@ -168,7 +168,7 @@ def run_experiment(n_list, k_list, input_type_name, data_generator):
 # Part 4: Main Execution
 
 if __name__ == "__main__":
-    N_VALUES =  [100,1000,10000,100000] 
+    N_VALUES =  [100,500,1000,5000,10000] 
     K_VALUES = list(range(10, 60))
 
     random_results1 = run_experiment(N_VALUES, K_VALUES, "Random1", generate_random_array)
