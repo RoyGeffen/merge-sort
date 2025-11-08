@@ -2,83 +2,91 @@ import math
 import random
 import time
 import gc
-import sys
 
 # Part 1: Algorithms Implementations From Book
+class HybridSorter:
+    @classmethod
+    def INSETION_SORT(self, A, p, r):
+        """
+        Sorts the subarray A[p..r] (inclusive) in-place.
+        Based on page 14 of the book
+        """
+        # In our 0-based translation for a subarray A[p..r],
+        # we start from the second element of the subarray (at index p+1).
+        for j in range(p + 1, r + 1):
+            key = A[j]
+            # Insert A[j] into the sorted sequence A[p..j-1]
+            i = j - 1
+            while i >= p and A[i] > key:
+                A[i + 1] = A[i]
+                i = i - 1
+            A[i + 1] = key
 
-def insertion_sort(A, p, r):
-    """
-    Sorts the subarray A[p..r] (inclusive) in-place.
-    Based on page 14 of the book
-    """
-    # In our 0-based translation for a subarray A[p..r],
-    # we start from the second element of the subarray (at index p+1).
-    for j in range(p + 1, r + 1):
-        key = A[j]
-        # Insert A[j] into the sorted sequence A[p..j-1]
-        i = j - 1
-        while i >= p and A[i] > key:
-            A[i + 1] = A[i]
-            i = i - 1
-        A[i + 1] = key
+    @classmethod
+    def MERGE(self, A, p, q, r):
+        """
+        Merges the two sorted subarrays A[p..q] and A[q+1..r].
+        From page 25 in the book 
+        Note we use 0 indexed arrays.
+        """
+        n1 = q - p + 1
+        n2 = r - q 
+        L = [None] * (n1+1)
+        R = [None] * (n2+1)
+        for i in range(n1):
+            L[i] = A[p + i]
+        for j in range(n2):
+            R[j] = A[q + 1 + j]
+        L[n1] = math.inf
+        R[n2] = math.inf
+        i = 0
+        j = 0
+        for k in range(p, r + 1):
+            if L[i] <= R[j]:
+                A[k] = L[i]
+                i = i + 1
+            else:
+                A[k] = R[j]
+                j = j + 1
 
-def merge(A, p, q, r):
-    """
-    Merges the two sorted subarrays A[p..q] and A[q+1..r].
-    From page 25 in the book 
-    Note we use 0 indexed arrays.
-    """
-    n1 = q - p + 1
-    n2 = r - q 
-    # Hack to created lists in vanilla python
-    L = [None] * (n1+1)
-    R = [None] * (n2+1)
-    for i in range(n1):
-        L[i] = A[p + i]
-    for j in range(n2):
-        R[j] = A[q + 1 + j]
-    L[n1] = math.inf
-    R[n2] = math.inf
-    i = 0
-    j = 0
-    for k in range(p, r + 1):
-        if L[i] <= R[j]:
-            A[k] = L[i]
-            i = i + 1
-        else:
-            A[k] = R[j]
-            j = j + 1
-
-def hybrid_merge_sort(A, p, r, k):
-    """
-    Sorts the subarray A[p..r] (inclusive) using the hybrid algorithm     
-    It uses Insertion Sort for subarrays of size 'k' or less.
-    """
-    n = r - p + 1
-    
-    if n <= k:
-        # Switch to insertion_sort for this small subarray
-        insertion_sort(A, p, r)
-    elif p < r:
-        # If the subarray is larger than k, divide and conquer as usual.
-        q = (p + r) // 2
-        hybrid_merge_sort(A, p, q, k)
-        hybrid_merge_sort(A, q + 1, r, k)
-        merge(A, p, q, r)
+    @classmethod
+    def hybrid_merge_sort(self, A, p, r, k):
+        """
+        Sorts the subarray A[p..r] (inclusive) using the hybrid algorithm     
+        It uses Insertion Sort for subarrays of size 'k' or less.
+        """
+        n = r - p + 1
+        
+        if n <= k:
+            # Switch to insertion_sort for this small subarray
+            HybridSorter.INSETION_SORT(A, p, r)
+        elif p < r:
+            # If the subarray is larger than k, divide and conquer as usual.
+            q = (p + r) // 2
+            HybridSorter.hybrid_merge_sort(A, p, q, k)
+            HybridSorter.hybrid_merge_sort(A, q + 1, r, k)
+            HybridSorter.MERGE(A, p, q, r)
 
 
+# Part 2 helper functions
 
-# Part 2: Empirical Benchmark to Find Optimal K
+def generate_sorted_array(n):
+    return list(range(n))
+
+def generate_sorted_array_reversed(n):
+    arr = generate_sorted_array(n)
+    arr.reverse()
+    return arr
 
 def generate_random_array(n):
     """generate random array with different numbers"""
-    arr = list(range(n))
+    arr = generate_sorted_array(n)
     random.shuffle(arr)
     return arr
 
 def generate_nearly_sorted_array(n, k_swaps):
     """return sorted array up to k_swaps"""
-    arr = list(range(n))
+    arr = generate_sorted_array(n)
     for _ in range(k_swaps):
         i = random.randrange(n)
         j = random.randrange(n)
@@ -89,67 +97,83 @@ def is_sorted(A):
     """Helper function to check if an array is sorted."""
     return A == sorted(A)
 
-def find_optimal_k(N_SIZE=5000, K_MAX=50, RUNS_PER_K=10):
-    """
-    Runs an empirical test to find the optimal 'k' value.
 
-    It times the execution of hybrid_merge_sort on a large, random
-    array for various values of k and identifies which 'k'
-    results in the minimum execution time.
+# Part 3: Empirical Benchmark to Find Optimal K
+
+def time_hybrid_sort(A, k):
+    """run hybrid merge sort and return the time it took"""
+    gc.disable()
+    start_time = time.perf_counter()
+    HybridSorter.hybrid_merge_sort(A, 0, len(A) - 1, k)
+    end_time = time.perf_counter()
+    gc.enable()
     
-    Returns:
-        int: The optimal 'k' value found.
-    """
-    # Set a high recursion depth to handle large arrays
-    try:
-        sys.setrecursionlimit(N_SIZE + 10)
-    except Exception as e:
-        print(f"Warning: Could not set recursion depth. {e}", file=sys.stderr)
+    if not is_sorted(A):
+        print(f"CRITICAL ERROR: Sort failed for k={k}")
+        raise RuntimeError(f"Sort verification failed for k={k}")
+    
+    return end_time - start_time
 
-    # --- Data Generation ---
-    # Generate one master array. We will *copy* this for each test.
-    # This is crucial to avoid a benchmark bias where sorting
-    print(f"Generating master array (N={N_SIZE})...")
-    original_data = generate_random_array(N_SIZE)
+def find_optimal_k_given_array(A, k_list, RUNS_PER_K=10):
+    """for a specific array A and 
+
+    Args:
+        A: array of different integers
+        k_list: list of k values to check
+        RUNS_PER_K: how many times should each k value be tested
+    """
     results = {}
-    print(f"Benchmarking k from 1 to {K_MAX}...")
 
-    for k in range(1, K_MAX + 1):
+    for k in k_list:
+        # take the avrage run time over {RUNS_PER_K} runs
         run_times = []
+        for _ in range(RUNS_PER_K):
+            A_copy = A[:]
+            run_time = time_hybrid_sort(A=A_copy, k=k)
+            run_times.append(run_time)
+        avg_time = sum(run_times) / len(run_times)
+        results[k] = avg_time
+    return results
+
+def run_experiment(n_list, k_list, input_type_name, data_generator):
+    """generate an array based on some specified peridaigm of length n 
+    and find the optimal k value for specified array
+    Args:
+        n_list: list of n values to test
+        k_list: list of k values to tset
+        input_type_name: title
+        data_generator: function that returns an array
+    """
+    print(f"\n--- Running Experiment: {input_type_name} Inputs ---")
+    results = {}
+
+    for n in n_list:
+        print(f"Processing for n = {n}...")
+        results[n] = {}
         
-        for i in range(RUNS_PER_K):
-            data_copy = original_data[:]
-            # 2. Disable Garbage Collection during the timed section [5]
-            gc.disable()
-            
-            start_time = time.perf_counter()
-            hybrid_merge_sort(data_copy, 0, N_SIZE - 1, k)
-            end_time = time.perf_counter()
-            
-            if not is_sorted(data_copy):
-                print(f"CRITICAL ERROR: Sort failed for k={k}")
-                raise RuntimeError(f"Sort verification failed for k={k}")
-
-            gc.enable()
-            
-            run_times.append(end_time - start_time)
+        original_data = []
+        if input_type_name == "Nearly Sorted":
+            original_data = data_generator(n, n // 10)
+        else:
+            original_data = data_generator(n)
         
-        min_time = min(run_times)
-        results[k] = min_time
-        print(f"n={N_SIZE} k={k:2d}, min_time={min_time:8.4f}s")
+        result = find_optimal_k_given_array(original_data, k_list, RUNS_PER_K=5)
+        optimal_k = min(result, key=result.get)
+        results[n] = {optimal_k: result[optimal_k]} 
+        print(f"n = {n}, best k = {optimal_k} at {result[optimal_k]:.4f}s")
 
-    optimal_k = min(results, key=results.get)
-    
-    print(f"--- Complete ---", file=sys.stderr)
-    print(f"Optimal k: {optimal_k} for n={N_SIZE} (Time: {results[optimal_k]:.4f}s)")
-    
-    return optimal_k
+    return results
 
-# Part 3: Main Execution
+
+# Part 4: Main Execution
 
 if __name__ == "__main__":
-    N_SIZE_POOL = [10,100,1000,10_000,100_000,1_000_000]
-    for n in N_SIZE_POOL:
-        optimal_k_value = find_optimal_k(K_MAX=50, N_SIZE=n)
-        print(optimal_k_value)
-        
+    N_VALUES =  [100,1000,10000,100000] 
+    K_VALUES = list(range(10, 60))
+
+    random_results1 = run_experiment(N_VALUES, K_VALUES, "Random1", generate_random_array)
+    random_results2 = run_experiment(N_VALUES, K_VALUES, "Random2", generate_random_array)
+    random_results3 = run_experiment(N_VALUES, K_VALUES, "Random3", generate_random_array)
+    nearly_sorted_results = run_experiment(N_VALUES, K_VALUES, "Nearly Sorted", generate_nearly_sorted_array)
+    sorted_results = run_experiment(N_VALUES, K_VALUES, "Sorted", generate_sorted_array)
+    reversed_sorted_results = run_experiment(N_VALUES, K_VALUES, "Sorted Reversed", generate_sorted_array_reversed)
